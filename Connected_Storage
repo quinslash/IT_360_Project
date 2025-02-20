@@ -1,0 +1,17 @@
+import platform
+
+
+if OS == "Linux":
+command = connected_Storage.py
+
+run command
+
+elif OS == "Devian":
+
+
+run command
+
+elif OS == "Windows":
+command
+
+run command
