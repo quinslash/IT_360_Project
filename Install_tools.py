@@ -11,7 +11,14 @@ def install_tool_linux(tool_name):
     """Install a tool on Linux using apt."""
     try:
         subprocess.run(["sudo", "apt-get", "update"], check=True)
-        subprocess.run(["sudo", "apt-get", "install", "-y", tool_name], check=True)
+        
+        # Special case: exiftool needs the correct apt package
+        if tool_name == "exiftool":
+            apt_package = "libimage-exiftool-perl"
+        else:
+            apt_package = tool_name
+
+        subprocess.run(["sudo", "apt-get", "install", "-y", apt_package], check=True)
         print(f"✅ {tool_name} installed successfully (Linux).")
     except subprocess.CalledProcessError:
         print(f"❌ Failed to install {tool_name} on Linux.")
