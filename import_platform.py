@@ -2,6 +2,8 @@ import platform
 import os
 import psutil
 import subprocess
+import json
+import xml.etree.ElementTree as ET
 from datetime import datetime
 import getpass
 import logging
@@ -9,28 +11,19 @@ import logging
 # Setup logging
 logging.basicConfig(filename="forensics.log", level=logging.INFO, format="%(asctime)s: %(message)s")
 
+# Storage for collected forensic data
+forensic_data = {
+    "SystemInfo": {},
+    "Drives": [],
+    "HashCheck": "",
+    "ChainOfCustody": "",
+    "ExifMetadata": []
+}
+
 # === 1. SYSTEM & DEVICE INFO ===
 
-def get_windows_drives():
-    if platform.system() == "Windows":
-        partitions = psutil.disk_partitions()
-        print("Available Windows Drives:")
-        for partition in partitions:
-            print(f"Drive: {partition.device}, Type: {partition.fstype}")
-    else:
-        print("Not a Windows filesystem")
-
-def get_unix_drives():
-    if platform.system() in ["Linux", "Darwin"]:
-        partitions = psutil.disk_partitions()
-        print("Available Unix Drives:")
-        for partition in partitions:
-            print(f"Mount Point: {partition.mountpoint}, Device: {partition.device}, Type: {partition.fstype}")
-    else:
-        print("Not a Unix filesystem")
-
 def get_system_info():
-    system_info = {
+    info = {
         "OS": platform.system(),
         "OS_Version": platform.version(),
         "OS_Release": platform.release(),
@@ -39,15 +32,21 @@ def get_system_info():
         "Machine_Type": platform.machine(),
         "Hostname": platform.node()
     }
-    return system_info
-
-def print_system_info():
-    info = get_system_info()
-    print("System Information:")
-    for key, value in info.items():
-        print(f"{key}: {value}")
-    print()
+    forensic_data["SystemInfo"] = info
     logging.info("System information collected.")
+
+def get_drives():
+    drives = []
+    partitions = psutil.disk_partitions()
+    for partition in partitions:
+        drive_info = {
+            "MountPoint": partition.mountpoint,
+            "Device": partition.device,
+            "Type": partition.fstype
+        }
+        drives.append(drive_info)
+    forensic_data["Drives"] = drives
+    logging.info("Drive information collected.")
 
 # === 2. TOOL DEPLOYMENT ===
 
@@ -83,12 +82,15 @@ def compare_hashes():
             hash1 = f1.read().split()[0]
             hash2 = f2.read().split()[0]
             if hash1 == hash2:
+                forensic_data["HashCheck"] = "Integrity Check Passed"
                 print("Hash integrity check passed ✅")
                 logging.info("Hash integrity check passed.")
             else:
+                forensic_data["HashCheck"] = "Hash Mismatch Detected"
                 print("WARNING: Hash mismatch detected ❌")
                 logging.warning("Hash mismatch detected.")
     except FileNotFoundError as e:
+        forensic_data["HashCheck"] = "Hash files missing"
         print(f"Hash file missing: {e}")
         logging.error(f"Hash file missing: {e}")
 
@@ -97,42 +99,83 @@ def compare_hashes():
 def log_chain_of_custody():
     user = getpass.getuser()
     timestamp = datetime.now().isoformat()
-    log_entry = f"Clone created by {user} at {timestamp}"
+    entry = f"Clone created by {user} at {timestamp}"
+    forensic_data["ChainOfCustody"] = entry
     with open("chain_of_custody.log", "a") as log:
-        log.write(log_entry + "\n")
+        log.write(entry + "\n")
     print("Chain of custody logged.")
     logging.info("Chain of custody recorded.")
 
-# === 6. OS DETECTION ===
+# === 6. METADATA COLLECTION ===
 
-def detect_os():
-    os_info = platform.system()
-    print(f"Detected OS: {os_info}")
-    logging.info(f"OS Detected: {os_info}")
-    return os_info
+def run_exiftool(target_dir):
+    try:
+        result = subprocess.run(
+            ["exiftool", "-r", "-json", target_dir],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        forensic_data["ExifMetadata"] = json.loads(result.stdout)
+        logging.info(f"Metadata collected from {target_dir}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running exiftool: {e}")
+        logging.error(f"Exiftool failed: {e}")
 
-# === 7. MAIN DRIVER FUNCTION ===
+# === 7. FINAL XML OUTPUT ===
+
+def save_forensic_report(output_file):
+    root = ET.Element("ForensicReport")
+
+    # System Info
+    sysinfo = ET.SubElement(root, "SystemInfo")
+    for key, value in forensic_data["SystemInfo"].items():
+        ET.SubElement(sysinfo, key).text = str(value)
+
+    # Drives
+    drives = ET.SubElement(root, "Drives")
+    for drive in forensic_data["Drives"]:
+        d = ET.SubElement(drives, "Drive")
+        for key, value in drive.items():
+            ET.SubElement(d, key).text = str(value)
+
+    # Hash Check
+    hash_check = ET.SubElement(root, "HashIntegrity")
+    hash_check.text = forensic_data["HashCheck"]
+
+    # Chain of Custody
+    chain = ET.SubElement(root, "ChainOfCustody")
+    chain.text = forensic_data["ChainOfCustody"]
+
+    # Metadata
+    metadata = ET.SubElement(root, "ExifMetadata")
+    for file_info in forensic_data["ExifMetadata"]:
+        file_elem = ET.SubElement(metadata, "File")
+        for key, value in file_info.items():
+            key_clean = key.replace(" ", "_")
+            ET.SubElement(file_elem, key_clean).text = str(value)
+
+    # Write XML
+    tree = ET.ElementTree(root)
+    tree.write(output_file, encoding="utf-8", xml_declaration=True)
+    print(f"\n✅ Forensic report saved as {output_file}")
+
+# === 8. MAIN DRIVER FUNCTION ===
 
 def main():
     print("==== Digital Forensics Tool ====\n")
 
-    print_system_info()
-
-    os_type = detect_os()
-    print()
-
-    get_unix_drives()
-    get_windows_drives()
-    print()
-
+    get_system_info()
+    get_drives()
     deploy_tool()
-    print()
-
     store_filesystem_map()
-    print()
-
     compare_hashes()
-    print()
-
     log_chain_of_custody()
-    print("\n✅ All forensic operations completed)
+
+    target_dir = "/home/username"  # <- update to safe scan folder
+    run_exiftool(target_dir)
+
+    save_forensic_report("forensics_report.xml")
+
+if __name__ == "__main__":
+    main()
