@@ -3,6 +3,7 @@ import os
 import psutil
 import subprocess
 import json
+import csv
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import getpass
@@ -17,7 +18,9 @@ forensic_data = {
     "Drives": [],
     "HashCheck": "",
     "ChainOfCustody": "",
-    "ExifMetadata": []
+    "ExifMetadata": [],
+    "StorageDevices": [],
+    "CSV_Metadata": []
 }
 
 # === 1. SYSTEM & DEVICE INFO ===
@@ -146,7 +149,17 @@ def save_forensic_report(output_file):
     # Chain of Custody
     chain = ET.SubElement(root, "ChainOfCustody")
     chain.text = forensic_data["ChainOfCustody"]
+ # Storage Devices
+    storage = ET.SubElement(root, "StorageDevices")
+    for device in forensic_data.get("StorageDevices", []):
+        ET.SubElement(storage, "Device").text = device
 
+    # CSV Metadata
+    csvmeta = ET.SubElement(root, "CSV_Metadata")
+    for entry in forensic_data.get("CSV_Metadata", []):
+        file_elem = ET.SubElement(csvmeta, "File")
+        for key, value in entry.items():
+            ET.SubElement(file_elem, key.replace(" ", "_")).text = str(value)
     # Metadata
     metadata = ET.SubElement(root, "ExifMetadata")
     for file_info in forensic_data["ExifMetadata"]:
@@ -159,6 +172,29 @@ def save_forensic_report(output_file):
     tree = ET.ElementTree(root)
     tree.write(output_file, encoding="utf-8", xml_declaration=True)
     print(f"\n✅ Forensic report saved as {output_file}")
+
+def load_storage_devices():
+    try:
+        with open('storage_devices.txt', 'r') as file:
+            devices = file.read().splitlines()
+            forensic_data["StorageDevices"] = devices
+            logging.info("Storage devices loaded.")
+    except FileNotFoundError:
+        forensic_data["StorageDevices"] = []
+        logging.warning("storage_devices.txt not found.")
+
+def load_metadata_csv():
+    try:
+        with open('metadata/system_metadata.csv', newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            csv_metadata = []
+            for row in reader:
+                csv_metadata.append(row)
+            forensic_data["CSV_Metadata"] = csv_metadata
+            logging.info("CSV metadata loaded.")
+    except FileNotFoundError:
+        forensic_data["CSV_Metadata"] = []
+        logging.warning("system_metadata.csv not found.")
 
 # === 8. MAIN DRIVER FUNCTION ===
 
@@ -174,6 +210,10 @@ def main():
 
     target_dir = "/home/username"  # <- update to safe scan folder
     run_exiftool(target_dir)
+
+    # These must be INSIDE main(), properly indented
+    load_storage_devices()
+    load_metadata_csv()
 
     save_forensic_report("forensics_report.xml")
 
