@@ -42,5 +42,7 @@ mkdir -p metadata
 find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -print | xargs exiftool -csv > metadata/system_metadata.csv
 echo "✔️  Metadata saved to metadata/system_metadata.csv."
 
+echo "Launching Python Script" 
+
 # === 6. Log Completion ===
 echo "📝 All steps completed. Logs and outputs saved."
