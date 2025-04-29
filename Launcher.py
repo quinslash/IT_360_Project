@@ -69,3 +69,5 @@ def main():
         sys.exit(1)
 
 print("\n✅ Forensics operations initiated successfully!")
+if __name__ == "__main__":
+    main()
