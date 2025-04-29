@@ -39,7 +39,7 @@ echo "✔️  Saved to storage_devices.txt."
 # === 5. Extract Metadata from Root ===
 echo "📷 Extracting metadata using exiftool..."
 mkdir -p metadata
-exiftool -r -all -csv / > metadata/system_metadata.csv
+find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -print | xargs exiftool -csv > metadata/system_metadata.csv
 echo "✔️  Metadata saved to metadata/system_metadata.csv."
 
 # === 6. Log Completion ===
