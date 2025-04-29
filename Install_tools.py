@@ -18,7 +18,7 @@ def install_tool_linux(tool_name):
         else:
             apt_package = tool_name
 
-        subprocess.run(["sudo", "apt-get", "install", "-y", apt_package], check=True)
+        subprocess.run(["sudo", "apt-get", "install", apt_package], check=True)
         print(f"✅ {tool_name} installed successfully (Linux).")
     except subprocess.CalledProcessError:
         print(f"❌ Failed to install {tool_name} on Linux.")
