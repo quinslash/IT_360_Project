@@ -8,21 +8,43 @@ def is_tool_installed(tool_name):
     return shutil.which(tool_name) is not None
 
 def install_tool_linux(tool_name):
-    """Install a tool on Linux using apt."""
+    """Install a tool on Linux using apt with Kali Linux fix."""
     try:
+        # Attempt initial package list update
         subprocess.run(["sudo", "apt-get", "update"], check=True)
-        
-        # Special case: exiftool needs the correct apt package
-        if tool_name == "exiftool":
-            apt_package = "libimage-exiftool-perl"
-        else:
-            apt_package = tool_name
-
-        subprocess.run(["sudo", "apt-get", "install", apt_package], check=True)
-        print(f"✅ {tool_name} installed successfully (Linux).")
     except subprocess.CalledProcessError:
-        print(f"❌ Failed to install {tool_name} on Linux.")
+        print("⚠️ Failed to update lists. Checking for Kali Linux...")
+        try:
+            # Check if Kali Linux
+            is_kali = False
+            try:
+                with open("/etc/os-release", "r") as f:
+                    is_kali = "Kali" in f.read()
+            except FileNotFoundError:
+                is_kali = False
+            
+            if is_kali:
+                print("🔧 Fixing Kali GPG keys...")
+                # Install Kali keyring and retry update
+                subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "kali-archive-keyring"],
+                    check=True
+                )
+                subprocess.run(["sudo", "apt-get", "update"], check=True)
+            else:
+                print("❌ Non-Kali system. Check repository configurations.")
+                raise
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to fix keys: {e}")
+            return
 
+    # Proceed with installation
+    try:
+        apt_package = "libimage-exiftool-perl" if tool_name == "exiftool" else tool_name
+        subprocess.run(["sudo", "apt-get", "install", "-y", apt_package], check=True)
+        print(f"✅ {tool_name} installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Installation failed: {e}")
 def install_tool_mac(tool_name):
     """Install a tool on MacOS using brew."""
     try:
