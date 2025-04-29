@@ -68,4 +68,4 @@ def main():
         print("❌ Unsupported OS.")
         sys.exit(1)
 
-    print("\n✅ Forensics operations initiated successf
+print("\n✅ Forensics operations initiated successfully!")
