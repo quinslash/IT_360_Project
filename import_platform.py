@@ -136,6 +136,7 @@ def run_exiftool(target_dir):
         logging.error(f"Exiftool failed: {e}")
 
 # === 7. FINAL XML OUTPUT ===
+#hours spent: 10 plus a single question to a nonspecific software that fixed it in under ten. 
 CHUNK_SIZE_MB = 24
 CHUNK_SIZE_BYTES = CHUNK_SIZE_MB * 1024 * 1024
 
