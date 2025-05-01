@@ -55,6 +55,7 @@ def main():
         if os.path.exists("forensic_tools.sh"):
             subprocess.call(["chmod", "+x", "forensic_tools.sh"])
             subprocess.call(["bash", "forensic_tools.sh"])
+            subprocess.call(["sudo", "forensic_tools.sh"])
         else:
             print("❌ forensic_tools.sh not found.")
     else:
