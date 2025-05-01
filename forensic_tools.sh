@@ -50,6 +50,7 @@ else
     echo "Skipping the command."
 fi 
 # === 6. installin psutl for python ===
+sudo apt install python3-pip
    sudo pip3 install psutil
 # === 7. Log Completion ===
 echo "📝 All steps completed. Logs and outputs saved."
