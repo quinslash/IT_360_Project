@@ -62,14 +62,15 @@ def deploy_tool():
     logging.info("Tool deployment attempted.")
 
 # === 3. FILESYSTEM MAP HANDLING ===
+# hours spent: 2
 def store_filesystem_map():
     try:
-        # If the file doesn't exist, generate the filesystem map
+        # If the file doesn't exist, generate the filesystem map 
         if not os.path.exists("filesystem_map.txt"):
             print("⚠️ filesystem_map.txt not found. Generating new map...")
             with open("filesystem_map.txt", "w", encoding="utf-8") as f:
                 for dirpath, dirnames, filenames in os.walk("/"):
-                    # Skip volatile or virtual paths
+                    # Skip volatile or virtual paths because it causes me headaches to think about massive datadumps anymore
                     if any(skip in dirpath for skip in ["/proc", "/sys", "/dev", "/run"]):
                         continue
                     for file in filenames:
