@@ -64,13 +64,24 @@ def deploy_tool():
 # === 3. FILESYSTEM MAP HANDLING ===
 def store_filesystem_map():
     try:
-        # If the file doesn't exist, create it with a placeholder
+        # If the file doesn't exist, generate the filesystem map
         if not os.path.exists("filesystem_map.txt"):
-            print("⚠️ filesystem_map.txt not found. Creating a new one...")
-            with open("filesystem_map.txt", "w") as f:
-                f.write("Filesystem Map Placeholder\n")  # Or actual data generation
-            logging.warning("filesystem_map.txt not found. A new file was created.")
+            print("⚠️ filesystem_map.txt not found. Generating new map...")
+            with open("filesystem_map.txt", "w", encoding="utf-8") as f:
+                for dirpath, dirnames, filenames in os.walk("/"):
+                    # Skip volatile or virtual paths
+                    if any(skip in dirpath for skip in ["/proc", "/sys", "/dev", "/run"]):
+                        continue
+                    for file in filenames:
+                        try:
+                            full_path = os.path.join(dirpath, file)
+                            size = os.path.getsize(full_path)
+                            f.write(f"{full_path}, {size} bytes\n")
+                        except Exception:
+                            continue  # Skip unreadable files
+            logging.warning("filesystem_map.txt not found. New filesystem map created.")
 
+        # Move the map to the output directory
         os.makedirs("output", exist_ok=True)
         os.rename("filesystem_map.txt", "output/filesystem_map_readable.txt")
         print("✅ Filesystem map stored in output directory.")
@@ -79,6 +90,7 @@ def store_filesystem_map():
     except Exception as e:
         print(f"❌ Error moving filesystem map: {e}")
         logging.error(f"Failed to move filesystem map: {e}")
+
 
 # === 4. HASH COMPARISON ===
 def compare_hashes():
