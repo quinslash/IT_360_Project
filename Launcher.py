@@ -42,14 +42,7 @@ def main():
     # 2. Install necessary tools
     run_install_tools()
 
-    # 3. Run import_platform.py (setup or initialization, if needed)
-    if os.path.exists("import_platform.py"):
-        print("📦 Running import_platform.py...")
-        subprocess.call([sys.executable, "import_platform.py"])
-    else:
-        print("⚠️ import_platform.py not found.")
-
-    # 4. Detect OS and launch correct forensic tool
+    # 3. Detect OS and launch correct forensic tool
     current_os = platform.system()
     if current_os == "Windows":
         print("🔍 Detected Windows. Running Batch Forensics Tool...")
@@ -67,7 +60,12 @@ def main():
     else:
         print("❌ Unsupported OS.")
         sys.exit(1)
-
+    # 4. Run import_platform.py (setup or initialization, if needed)
+    if os.path.exists("import_platform.py"):
+        print("📦 Running import_platform.py...")
+        subprocess.call([sys.executable, "import_platform.py"])
+    else:
+        print("⚠️ import_platform.py not found.")
 print("\n✅ Forensics operations initiated successfully!")
 if __name__ == "__main__":
     main()
