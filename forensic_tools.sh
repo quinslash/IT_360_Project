@@ -48,7 +48,8 @@ echo "✔️  Metadata saved to metadata/system_metadata.csv."
 
 else
     echo "Skipping the command."
-fi
-
-# === 6. Log Completion ===
+fi 
+# === 6. installin psutl for python ===
+   sudo pip3 install psutil
+# === 7. Log Completion ===
 echo "📝 All steps completed. Logs and outputs saved."
