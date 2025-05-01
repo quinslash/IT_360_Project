@@ -12,7 +12,6 @@ import logging
 # Setup logging
 logging.basicConfig(filename="forensics.log", level=logging.INFO, format="%(asctime)s: %(message)s")
 
-# Storage for collected forensic data
 forensic_data = {
     "SystemInfo": {},
     "Drives": [],
@@ -24,7 +23,6 @@ forensic_data = {
 }
 
 # === 1. SYSTEM & DEVICE INFO ===
-
 def get_system_info():
     info = {
         "OS": platform.system(),
@@ -40,8 +38,7 @@ def get_system_info():
 
 def get_drives():
     drives = []
-    partitions = psutil.disk_partitions()
-    for partition in partitions:
+    for partition in psutil.disk_partitions():
         drive_info = {
             "MountPoint": partition.mountpoint,
             "Device": partition.device,
@@ -52,7 +49,6 @@ def get_drives():
     logging.info("Drive information collected.")
 
 # === 2. TOOL DEPLOYMENT ===
-
 def deploy_tool():
     print("Deploying necessary tools...")
     if platform.system() == "Linux":
@@ -66,7 +62,6 @@ def deploy_tool():
     logging.info("Tool deployment attempted.")
 
 # === 3. FILESYSTEM MAP HANDLING ===
-
 def store_filesystem_map():
     try:
         os.makedirs("output", exist_ok=True)
@@ -78,7 +73,6 @@ def store_filesystem_map():
         logging.error(f"Failed to move filesystem map: {e}")
 
 # === 4. HASH COMPARISON ===
-
 def compare_hashes():
     try:
         with open('original_hash.txt') as f1, open('clone_hash.txt') as f2:
@@ -98,7 +92,6 @@ def compare_hashes():
         logging.error(f"Hash file missing: {e}")
 
 # === 5. CHAIN OF CUSTODY LOGGING ===
-
 def log_chain_of_custody():
     user = getpass.getuser()
     timestamp = datetime.now().isoformat()
@@ -110,15 +103,11 @@ def log_chain_of_custody():
     logging.info("Chain of custody recorded.")
 
 # === 6. METADATA COLLECTION ===
-
 def run_exiftool(target_dir):
     try:
-        result = subprocess.run(
-            ["exiftool", "-r", "-json", target_dir],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        result = subprocess.run([
+            "exiftool", "-r", "-json", target_dir
+        ], capture_output=True, text=True, check=True)
         forensic_data["ExifMetadata"] = json.loads(result.stdout)
         logging.info(f"Metadata collected from {target_dir}")
     except subprocess.CalledProcessError as e:
@@ -126,41 +115,39 @@ def run_exiftool(target_dir):
         logging.error(f"Exiftool failed: {e}")
 
 # === 7. FINAL XML OUTPUT ===
+CHUNK_SIZE_MB = 24
+CHUNK_SIZE_BYTES = CHUNK_SIZE_MB * 1024 * 1024
 
 def save_forensic_report(output_file):
+    output_file_base = os.path.splitext(output_file)[0]
     root = ET.Element("ForensicReport")
 
-    # System Info
     sysinfo = ET.SubElement(root, "SystemInfo")
     for key, value in forensic_data["SystemInfo"].items():
         ET.SubElement(sysinfo, key).text = str(value)
 
-    # Drives
     drives = ET.SubElement(root, "Drives")
     for drive in forensic_data["Drives"]:
         d = ET.SubElement(drives, "Drive")
         for key, value in drive.items():
             ET.SubElement(d, key).text = str(value)
 
-    # Hash Check
     hash_check = ET.SubElement(root, "HashIntegrity")
     hash_check.text = forensic_data["HashCheck"]
 
-    # Chain of Custody
     chain = ET.SubElement(root, "ChainOfCustody")
     chain.text = forensic_data["ChainOfCustody"]
- # Storage Devices
+
     storage = ET.SubElement(root, "StorageDevices")
     for device in forensic_data.get("StorageDevices", []):
         ET.SubElement(storage, "Device").text = device
 
-    # CSV Metadata
     csvmeta = ET.SubElement(root, "CSV_Metadata")
     for entry in forensic_data.get("CSV_Metadata", []):
         file_elem = ET.SubElement(csvmeta, "File")
         for key, value in entry.items():
             ET.SubElement(file_elem, key.replace(" ", "_")).text = str(value)
-    # Metadata
+
     metadata = ET.SubElement(root, "ExifMetadata")
     for file_info in forensic_data["ExifMetadata"]:
         file_elem = ET.SubElement(metadata, "File")
@@ -168,11 +155,37 @@ def save_forensic_report(output_file):
             key_clean = key.replace(" ", "_")
             ET.SubElement(file_elem, key_clean).text = str(value)
 
-    # Write XML
-    tree = ET.ElementTree(root)
-    tree.write(output_file, encoding="utf-8", xml_declaration=True)
-    print(f"\n✅ Forensic report saved as {output_file}")
+    base_output = f"{output_file_base}_base.xml"
+    ET.ElementTree(root).write(base_output, encoding="utf-8", xml_declaration=True)
+    print(f"✅ Base forensic report saved as {base_output}")
 
+    csv_metadata = forensic_data.get("CSV_Metadata", [])
+    chunk_root = ET.Element("CSV_Metadata")
+    part_num = 1
+    size_estimate = 0
+
+    for entry in csv_metadata:
+        file_elem = ET.SubElement(chunk_root, "File")
+        for key, value in entry.items():
+            tag = key.replace(" ", "_")
+            ET.SubElement(file_elem, tag).text = str(value)
+
+        size_estimate = len(ET.tostring(chunk_root, encoding="utf-8"))
+
+        if size_estimate >= CHUNK_SIZE_BYTES:
+            chunk_file = f"{output_file_base}_part{part_num}.xml"
+            ET.ElementTree(chunk_root).write(chunk_file, encoding="utf-8", xml_declaration=True)
+            print(f"✅ CSV metadata chunk saved as {chunk_file}")
+            part_num += 1
+            chunk_root = ET.Element("CSV_Metadata")
+            size_estimate = 0
+
+    if len(chunk_root):
+        chunk_file = f"{output_file_base}_part{part_num}.xml"
+        ET.ElementTree(chunk_root).write(chunk_file, encoding="utf-8", xml_declaration=True)
+        print(f"✅ Final CSV metadata chunk saved as {chunk_file}")
+
+# === 8. FILE LOADERS ===
 def load_storage_devices():
     try:
         with open('storage_devices.txt', 'r') as file:
@@ -187,34 +200,25 @@ def load_metadata_csv():
     try:
         with open('metadata/system_metadata.csv', newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
-            csv_metadata = []
-            for row in reader:
-                csv_metadata.append(row)
+            csv_metadata = [row for row in reader]
             forensic_data["CSV_Metadata"] = csv_metadata
             logging.info("CSV metadata loaded.")
     except FileNotFoundError:
         forensic_data["CSV_Metadata"] = []
         logging.warning("system_metadata.csv not found.")
 
-# === 8. MAIN DRIVER FUNCTION ===
-
+# === 9. MAIN DRIVER ===
 def main():
     print("==== Digital Forensics Tool ====\n")
-
     get_system_info()
     get_drives()
     deploy_tool()
     store_filesystem_map()
     compare_hashes()
     log_chain_of_custody()
-
-    target_dir = "/home/username"  # <- update to safe scan folder
-    run_exiftool(target_dir)
-
-    # These must be INSIDE main(), properly indented
+    run_exiftool("/home/username")  # UPDATE THIS PATH
     load_storage_devices()
     load_metadata_csv()
-
     save_forensic_report("forensics_report.xml")
 
 if __name__ == "__main__":
