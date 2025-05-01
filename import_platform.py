@@ -65,8 +65,9 @@ def deploy_tool():
 def store_filesystem_map():
     try:
         if not os.path.exists("filesystem_map.txt"):
-            print("⚠️ filesystem_map.txt not found. Skipping.")
-            logging.warning("filesystem_map.txt not found.")
+            print("⚠️ filesystem_map.txt not found. creating")
+            logging.warning("filesystem_map.txt not found. One created")
+                    subprocess.call(["sudo", "touch", "filesystem_map.txt"])
             return
         os.makedirs("output", exist_ok=True)
         os.rename("filesystem_map.txt", "output/filesystem_map_readable.txt")
