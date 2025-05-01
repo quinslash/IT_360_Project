@@ -37,10 +37,18 @@ lsblk > storage_devices.txt
 echo "✔️  Saved to storage_devices.txt."
 
 # === 5. Extract Metadata from Root ===
-echo "📷 Extracting metadata using exiftool..."
+read -p "Do you want to run exiftool? (y/n): " answer
+
+if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+    echo "Running the command..."
+   echo "📷 Extracting metadata using exiftool..."
 mkdir -p metadata
 find / -path /proc -prune -o -path /sys -prune -o -path /dev -prune -o -path /run -prune -o -type f -print | xargs exiftool -csv > metadata/system_metadata.csv
 echo "✔️  Metadata saved to metadata/system_metadata.csv."
+
+else
+    echo "Skipping the command."
+fi
 
 # === 6. Log Completion ===
 echo "📝 All steps completed. Logs and outputs saved."
